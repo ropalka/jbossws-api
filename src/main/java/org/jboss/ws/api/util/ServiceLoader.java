@@ -155,29 +155,26 @@ public final class ServiceLoader
 
    private static String getServiceNameUsingCache(ClassLoader loader, String filename) throws IOException
    {
-      Map<String, String> map = serviceMap.get(loader);
-      if (map != null && map.containsKey(filename))
-      {
-         return map.get(filename);
-      }
-      else
-      {
-         if (map == null)
-         {
+      Map<String, String> map;
+      synchronized (serviceMap) {
+         map = serviceMap.get(loader);
+         if (map == null) {
             map = new ConcurrentHashMap<>();
             serviceMap.put(loader, map);
          }
-         InputStream inStream = SecurityActions.getResourceAsStream(loader, filename);
-         String factoryName = null;
-         if (inStream != null)
-         {
-            BufferedReader br = new BufferedReader(new InputStreamReader(inStream, "UTF-8"));
-            factoryName = br.readLine();
-            br.close();
-            map.put(filename, factoryName);
-         }
-         return factoryName;
       }
+      String factoryName = map.get(filename);
+      if (factoryName != null) return factoryName;
+
+      InputStream inStream = SecurityActions.getResourceAsStream(loader, filename);
+      if (inStream != null)
+      {
+         BufferedReader br = new BufferedReader(new InputStreamReader(inStream, "UTF-8"));
+         factoryName = br.readLine();
+         br.close();
+         map.put(filename, factoryName);
+      }
+      return factoryName;
    }
    
    /** Use the system property
